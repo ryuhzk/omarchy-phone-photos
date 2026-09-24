@@ -18,7 +18,17 @@
     "category": "Media",
     "allowMultiple": false,
     "defaultSection": "center",
-    "defaults": {},
-    "schema": []
+    "defaults": {
+      "trashCopies": false
+    },
+    "schema": [
+      {
+        "key": "trashCopies",
+        "type": "boolean",
+        "label": "Move deleted items to this computer's Trash",
+        "description": "Before deleting from the phone, copy each item into ~/Pictures/<phone name>/ and move that copy to the Trash, so it can be restored. The delete dialog remembers the last choice.",
+        "defaultValue": false
+      }
+    ]
   }
 }

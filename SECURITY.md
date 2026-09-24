@@ -64,11 +64,18 @@ other than the one it listed. `tests/test_library.py` covers this.
 ## What it deletes
 
 Only files the user selected and then confirmed in a dialog that states the
-count, the size, and that the deletion is permanent (`ui/ConfirmDelete.qml`,
-where keyboard focus starts on **Cancel**). The window then sends the selected
-ids; the helper resolves them as above and deletes each one with
-`Gio.File.delete` (`device.delete`). MTP has no trash, so this is final, and the
-dialog says so.
+count and the size (`ui/ConfirmDelete.qml`, where keyboard focus starts on
+**Cancel**). The window then sends the selected ids; the helper resolves them as
+above and deletes each one with `Gio.File.delete` (`device.delete`).
+
+MTP has no trash. When the dialog's **Move them to this computer's Trash** box
+is ticked, each item is first copied into `~/Pictures/<phone name>/` under a
+name that collides with nothing and then moved to the desktop Trash with
+`Gio.File.trash` (`device.keep_in_trash`). The phone file is deleted only after
+both steps succeed; if either fails, the partial copy is removed, the phone file
+is left alone, and the failure is reported. `tests/test_device.py` covers both
+outcomes. When the box is not ticked, the dialog says the deletion is permanent,
+and it is.
 
 ## What it reads from the phone, and how that is bounded
 
@@ -99,6 +106,8 @@ sandboxed decoder, never the shell's.
 | `~/.cache/omarchy-phone-photos/thumbs/` | Thumbnails the helper made | 256 MB, least recently used removed first |
 | `~/.cache/omarchy-phone-photos/previews/` | Large previews for the viewer | 256 MB, least recently used removed first |
 | `~/Pictures/<phone name>/` | Files you chose to download | What you chose |
+| The desktop Trash (`~/.local/share/Trash`) | Copies of deleted items, when that box is ticked | What you deleted |
+| `~/.config/omarchy/shell.json` | This widget's own `trashCopies` setting, through the shell's plugin settings API | One boolean |
 
 - The cache folders are created `0700` and each file `0600`, because they hold
   pictures of the user's life (`phone_photos.Cache`, `device._save_jpeg`).
@@ -114,9 +123,10 @@ sandboxed decoder, never the shell's.
   written through (`device.download`, covered by `tests/test_device.py`).
 - The phone's name used for the folder goes through the same cleaning.
 
-Nothing is written to the phone, and nothing is written outside the three places
-above. `~/.config/omarchy/shell.json` is changed only by Omarchy itself when you
-enable, move or remove the widget.
+Nothing is written to the phone, and nothing is written outside the places
+above. The settings write goes through the shell's own `updateEntryInline` for
+this widget's entry only (`Panel.qml`, `setTrashCopies`), carrying over the
+entry's other settings unchanged; it happens only when the box is clicked.
 
 ## What the helper accepts
 

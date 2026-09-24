@@ -14,8 +14,11 @@ Item {
   property string deviceLabel: "the phone"
   property var previews: []   // up to three thumbnail paths
   property bool shown: false
+  // Keep a copy in this computer's Trash before the phone lets go of it.
+  property bool keepCopy: false
 
   signal confirmed()
+  signal keepCopyToggled(bool value)
   signal cancelled()
 
   function show() {
@@ -132,12 +135,72 @@ Item {
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         textFormat: Text.PlainText
-        text: Layout.formatBytes(dialog.bytes) + " will be removed from " + dialog.deviceLabel
-          + " permanently. Phones have no trash over USB, so this cannot be undone."
+        text: dialog.keepCopy
+          ? Layout.formatBytes(dialog.bytes) + " will be removed from " + dialog.deviceLabel
+            + ". A copy of each goes to this computer's Trash first, so you can restore it from there."
+          : Layout.formatBytes(dialog.bytes) + " will be removed from " + dialog.deviceLabel
+            + " permanently. Phones have no trash over USB, so this cannot be undone."
         color: Util.alpha(Color.popups.text, 0.7)
         font.family: Style.font.family
         font.pixelSize: Style.font.body
         lineHeight: 1.2
+      }
+
+      // The choice is remembered for next time.
+      Rectangle {
+        id: keepRow
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: keepContent.implicitWidth + Style.space(20)
+        height: Style.space(36)
+        radius: Style.cornerRadius
+        color: keepArea.containsMouse ? Util.alpha(Color.popups.text, 0.06) : "transparent"
+        Behavior on color { ColorAnimation { duration: 120 } }
+
+        Row {
+          id: keepContent
+          anchors.centerIn: parent
+          spacing: Style.space(10)
+
+          Rectangle {
+            id: box
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(18)
+            height: width
+            radius: Math.min(Style.cornerRadius, Style.space(4))
+            color: dialog.keepCopy ? Color.accent : "transparent"
+            border.width: dialog.keepCopy ? 0 : 1.5
+            border.color: Util.alpha(Color.popups.text, 0.5)
+            Behavior on color { ColorAnimation { duration: 120 } }
+            Text {
+              anchors.centerIn: parent
+              text: "󰄬"
+              visible: dialog.keepCopy
+              scale: dialog.keepCopy ? 1 : 0.4
+              Behavior on scale { NumberAnimation { duration: 160; easing.type: Easing.OutBack } }
+              color: Color.popups.background
+              font.family: Style.font.family
+              font.pixelSize: Style.font.bodySmall
+              font.bold: true
+            }
+          }
+
+          Text {
+            anchors.verticalCenter: parent.verticalCenter
+            textFormat: Text.PlainText
+            text: "Move them to this computer's Trash"
+            color: Color.popups.text
+            font.family: Style.font.family
+            font.pixelSize: Style.font.body
+          }
+        }
+
+        MouseArea {
+          id: keepArea
+          anchors.fill: parent
+          hoverEnabled: true
+          cursorShape: Qt.PointingHandCursor
+          onClicked: dialog.keepCopyToggled(!dialog.keepCopy)
+        }
       }
 
       Row {
@@ -149,11 +212,12 @@ Item {
           focus: true
           Keys.onReturnPressed: dialog.cancelled()
           Keys.onEscapePressed: dialog.cancelled()
+          Keys.onSpacePressed: dialog.keepCopyToggled(!dialog.keepCopy)
           onClicked: dialog.cancelled()
         }
         ActionButton {
-          glyph: "󰆴"
-          label: "Delete " + Layout.formatCount(dialog.count, "item", "items")
+          glyph: dialog.keepCopy ? "󰩹" : "󰆴"
+          label: (dialog.keepCopy ? "Trash " : "Delete ") + Layout.formatCount(dialog.count, "item", "items")
           variant: "danger"
           onClicked: dialog.confirmed()
         }

@@ -26,9 +26,13 @@ search along the top](preview.png)
 - **Selection.** Click a photo's check circle, or Ctrl-click, to start
   selecting; Shift-click picks everything in between; Ctrl A selects everything
   that matches the current filters, including what has not loaded yet.
-- **Delete, with a second step.** Deleting asks first, shows what is about to
-  go and how much it weighs, and says plainly that it is permanent: phones have
-  no trash over USB. The rest of the grid slides together afterwards.
+- **Delete, with a second step.** Deleting asks first and shows what is about
+  to go and how much it weighs. Phones have no trash over USB, so the dialog
+  offers one: tick **Move them to this computer's Trash** and each item is first
+  copied here and put in the Trash, from where it can be restored (to
+  `~/Pictures/<phone name>/`); leave it unticked and the items are deleted from
+  the phone for good. The dialog remembers your last choice. The rest of the
+  grid slides together afterwards.
 - **Download.** Selected photos and videos are copied to
   `~/Pictures/<phone name>/` with their original dates. A file that is already
   there with the same size is skipped; a different file with the same name is
@@ -97,6 +101,15 @@ omarchy restart shell
 
 The icon appears in the bar. Click it to open the gallery. If the phone is
 still locked, the window says so and picks up as soon as it is unlocked.
+
+## Settings
+
+**Setup → Plugins → Phone Photos** has one setting, the same one as the box in
+the delete dialog:
+
+| Setting | What it does |
+|---|---|
+| `trashCopies` | Before deleting from the phone, put a copy of each item in this computer's Trash. Off by default; the delete dialog sets it to your last choice. |
 
 ## Update
 

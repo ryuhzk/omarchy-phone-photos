@@ -215,9 +215,9 @@ def delete(root, item):
     file_for(root, item).delete(None)
 
 
-def download(root, item, folder, cancellable, progress):
+def download(root, item, folder, cancellable, progress, skip_identical=True):
     """Copy one file into `folder`. Returns the saved path, or None when already there."""
-    target = lib.download_target(folder, item.name, item.size, os.path.exists, os.path.getsize)
+    target = lib.download_target(folder, item.name, item.size, os.path.lexists, os.path.getsize, skip_identical)
     if target is None:
         return None
     partial = target + ".part"
@@ -240,3 +240,21 @@ def download(root, item, folder, cancellable, progress):
             pass
         raise
     return target
+
+
+def keep_in_trash(root, item, folder, cancellable):
+    """Put a copy of `item` in this computer's Trash, before it leaves the phone.
+
+    The copy is made in `folder` and then trashed, so restoring it from the
+    Trash puts it back there. Raises if either step fails; the phone file must
+    then be left alone.
+    """
+    copy = download(root, item, folder, cancellable, lambda done: None, skip_identical=False)
+    try:
+        Gio.File.new_for_path(copy).trash(cancellable)
+    except BaseException:
+        try:
+            os.unlink(copy)
+        except OSError:
+            pass
+        raise

@@ -44,6 +44,18 @@ Panel {
   property int viewerIndex: -1
   property string viewerPreview: ""
 
+  // Whether deleting also puts a copy in this computer's Trash. Kept in the
+  // widget's own entry in shell.json, so the last choice is the next default.
+  readonly property bool trashCopies: setting("trashCopies", false) === true
+
+  function setTrashCopies(value) {
+    if (!bar || !bar.shell || typeof bar.shell.updateEntryInline !== "function") return
+    var entry = { id: moduleName }
+    for (var key in settings) if (key !== "id") entry[key] = settings[key]
+    entry.trashCopies = value === true
+    bar.shell.updateEntryInline(moduleName, entry)
+  }
+
   readonly property bool connected: devices.length > 0
   // Built when a request goes out, not bound: a change handler can run before
   // a binding on the same property catches up, which sent the previous filter.
@@ -160,7 +172,8 @@ Panel {
       allSelected = true
       break
     case "deleting":
-      toast.running("Deleting…", event.done + " of " + event.total, event.done / Math.max(1, event.total))
+      toast.running(event.trash ? "Moving to Trash…" : "Deleting…", event.done + " of " + event.total,
+        event.done / Math.max(1, event.total))
       break
     case "deleted":
       finishDelete(event)
@@ -284,7 +297,7 @@ Panel {
   function confirmDelete() {
     confirm.hide()
     deleting = true
-    send({ op: "delete", ids: pendingDelete })
+    send({ op: "delete", ids: pendingDelete, trash: trashCopies })
   }
 
   function finishDelete(event) {
@@ -301,7 +314,8 @@ Panel {
       toast.flash("Could not delete " + Layout.formatCount(event.failed.length, "item", "items"),
         event.failed[0].name + ": " + event.failed[0].message, true)
     } else {
-      toast.flash("Deleted " + Layout.formatCount(event.ids.length, "item", "items"), "Removed from " + deviceLabel)
+      toast.flash((event.trash ? "Moved to Trash: " : "Deleted ") + Layout.formatCount(event.ids.length, "item", "items"),
+        event.trash ? "Removed from " + deviceLabel + "; restore them from this computer's Trash" : "Removed from " + deviceLabel)
     }
   }
 
@@ -538,6 +552,8 @@ Panel {
       ConfirmDelete {
         id: confirm
         deviceLabel: root.deviceLabel
+        keepCopy: root.trashCopies
+        onKeepCopyToggled: function(value) { root.setTrashCopies(value) }
         onConfirmed: root.confirmDelete()
         onCancelled: {
           confirm.hide()

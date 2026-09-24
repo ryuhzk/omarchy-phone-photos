@@ -237,15 +237,19 @@ class Sidecar:
             self.request_scan()
         return False
 
-    def run_delete(self, ids):
+    def run_delete(self, ids, keep_copies):
         with self.lock:
             items = self.library.resolve(ids)
-            root = self.root
-        if root is None:
+            root, phone = self.root, self.current
+        if root is None or phone is None:
             return
+        folder = self.download_folder(phone) if keep_copies else None
         deleted, failed = [], []
         for index, item in enumerate(items):
             try:
+                # A copy in the Trash first; if that fails, the phone keeps it.
+                if keep_copies:
+                    phone_io.keep_in_trash(root, item, folder, None)
                 phone_io.delete(root, item)
                 deleted.append(item.id)
             except GLib.Error as error:
@@ -253,14 +257,23 @@ class Sidecar:
                     deleted.append(item.id)
                 else:
                     failed.append({"id": item.id, "name": item.name, "message": error.message})
-            if len(deleted) % 20 == 0 or index == len(items) - 1:
-                self.emit("deleting", done=index + 1, total=len(items))
+            except OSError as error:
+                failed.append({"id": item.id, "name": item.name, "message": str(error)})
+            if keep_copies or len(deleted) % 20 == 0 or index == len(items) - 1:
+                self.emit("deleting", done=index + 1, total=len(items), trash=keep_copies)
         with self.lock:
             self.library.remove(deleted)
             self.version += 1
             summary = self.library.summary()
             version = self.version
-        self.emit("deleted", ids=deleted, failed=failed, version=version, **summary)
+        self.emit("deleted", ids=deleted, failed=failed, version=version, trash=keep_copies, **summary)
+
+    def download_folder(self, phone):
+        pictures = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) \
+            or os.path.join(GLib.get_home_dir(), "Pictures")
+        folder = os.path.join(pictures, lib.safe_file_name(phone.label))
+        os.makedirs(folder, exist_ok=True)
+        return folder
 
     def run_download(self, ids, cancellable):
         with self.lock:
@@ -268,10 +281,7 @@ class Sidecar:
             root, phone = self.root, self.current
         if root is None or phone is None:
             return
-        pictures = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES) \
-            or os.path.join(GLib.get_home_dir(), "Pictures")
-        folder = os.path.join(pictures, lib.safe_file_name(phone.label))
-        os.makedirs(folder, exist_ok=True)
+        folder = self.download_folder(phone)
         total_bytes = sum(item.size for item in items)
         state = {"base": 0, "last": 0.0}
         saved, skipped, failed = 0, 0, []
@@ -378,7 +388,7 @@ class Sidecar:
                 self.jobs.put(("preview", message["id"]))
         elif op == "delete":
             if isinstance(message.get("ids"), list) and message["ids"]:
-                self.jobs.put(("delete", message["ids"]))
+                self.jobs.put(("delete", message["ids"], message.get("trash") is True))
         elif op == "download":
             if isinstance(message.get("ids"), list) and message["ids"]:
                 self.download_cancel = Gio.Cancellable()

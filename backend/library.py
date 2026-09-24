@@ -202,10 +202,12 @@ def safe_file_name(name):
     return name[:200]
 
 
-def download_target(folder, name, size, exists, size_of):
+def download_target(folder, name, size, exists, size_of, skip_identical=True):
     """Where to save `name`, or None when an identical copy is already there.
 
-    `exists(path)` and `size_of(path)` are injected so the rule can be tested.
+    With `skip_identical` off there is always a fresh name, for a copy that
+    must exist on its own (one headed for the Trash). `exists(path)` and
+    `size_of(path)` are injected so the rule can be tested.
     """
     name = safe_file_name(name)
     stem, dot, extension = name.rpartition(".")
@@ -214,7 +216,7 @@ def download_target(folder, name, size, exists, size_of):
     candidate = os.path.join(folder, name)
     counter = 1
     while exists(candidate):
-        if size_of(candidate) == size:
+        if skip_identical and size_of(candidate) == size:
             return None
         counter += 1
         suffix = f" ({counter})"

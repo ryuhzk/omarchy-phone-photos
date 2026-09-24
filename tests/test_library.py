@@ -124,6 +124,7 @@ class Downloads(unittest.TestCase):
         self.assertIsNone(lib.download_target("/d", "a.jpg", 5, exists, size_of))
         self.assertIsNone(lib.download_target("/d", "a.jpg", 6, exists, size_of))
         self.assertEqual(lib.download_target("/d", "a.jpg", 7, exists, size_of), "/d/a (3).jpg")
+        self.assertEqual(lib.download_target("/d", "a.jpg", 5, exists, size_of, skip_identical=False), "/d/a (3).jpg")
 
 
 class Cache(unittest.TestCase):

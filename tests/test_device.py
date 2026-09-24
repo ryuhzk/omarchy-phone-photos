@@ -72,6 +72,44 @@ class LocalPhone(unittest.TestCase):
         self.assertIsNotNone(first)
         self.assertIsNone(device.download(self.root, item, self.downloads, Gio.Cancellable(), lambda done: None))
 
+    def test_keep_in_trash_trashes_a_copy_and_leaves_the_phone_file(self):
+        item = self.scan()[0]
+        trashed = []
+        original = Gio.File.trash
+
+        def fake_trash(gfile, cancellable):
+            trashed.append(gfile.get_path())
+            os.remove(gfile.get_path())
+            return True
+
+        Gio.File.trash = fake_trash
+        try:
+            device.keep_in_trash(self.root, item, self.downloads, None)
+            # An identical earlier download does not stand in for the Trash copy.
+            with open(os.path.join(self.downloads, "a.jpg"), "wb") as handle:
+                handle.write(b"photo bytes")
+            device.keep_in_trash(self.root, item, self.downloads, None)
+        finally:
+            Gio.File.trash = original
+        self.assertEqual([os.path.basename(p) for p in trashed], ["a.jpg", "a (2).jpg"])
+        self.assertTrue(os.path.exists(self.photo))
+
+    def test_failed_trash_leaves_no_copy_behind(self):
+        item = self.scan()[0]
+        original = Gio.File.trash
+
+        def broken_trash(gfile, cancellable):
+            raise GLib.Error("no trash here")
+
+        Gio.File.trash = broken_trash
+        try:
+            with self.assertRaises(GLib.Error):
+                device.keep_in_trash(self.root, item, self.downloads, None)
+        finally:
+            Gio.File.trash = original
+        self.assertEqual(os.listdir(self.downloads), [])
+        self.assertTrue(os.path.exists(self.photo))
+
     def test_delete_removes_only_that_file(self):
         library = lib.Library(self.scan())
         [item] = library.resolve([library.items[0].id, "not-an-id"])
