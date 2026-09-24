@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "ryuhzk.phone-photos",
+  "name": "Phone Photos",
+  "version": "0.1.0",
+  "author": "ryuhzk",
+  "license": "MIT",
+  "description": "Browse, search, download and delete the photos and videos on an Android phone plugged in over USB.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Phone Photos",
+    "description": "Appears while an Android phone is connected over USB and opens a gallery of its photos and videos.",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "center",
+    "defaults": {},
+    "schema": []
+  }
+}
